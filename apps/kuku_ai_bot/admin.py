@@ -3,7 +3,7 @@ from django.db import models
 from django.db.models import Count
 
 from .forms import SubscribeChannelForm
-from .models import Bot, User, Broadcast, BroadcastRecipient
+from .models import Bot, User, Broadcast, BroadcastRecipient, SearchQuery, InvitedUser
 from .models import Location
 from .models import SubscribeChannel, TgFile
 from .tasks import send_message_to_user_task
@@ -171,3 +171,34 @@ class BroadcastAdmin(admin.ModelAdmin):
             broadcast.save()
 
         self.message_user(request, f"{requeued_count} ta xatolik bo'lgan xabar qayta navbatga qo'yildi.")
+
+
+@admin.register(SearchQuery)
+class SearchQueryAdmin(admin.ModelAdmin):
+    list_display = ('query_text', 'user', 'is_deep_search', 'found_results', 'created_at')
+    list_filter = ('is_deep_search', 'found_results', 'created_at')
+    search_fields = ('query_text', 'user__username')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(InvitedUser)
+class InvitedUserAdmin(admin.ModelAdmin):
+    """
+    Admin interface for the InvitedUser model.
+    """
+    # Ro'yxatda ko'rinadigan ustunlar
+    list_display = ( 'first_name', 'channel', 'left', 'invited_at', 'left_at')
+
+
+
+    # O'ng tomonda paydo bo'ladigan filtrlar paneli
+    list_filter = ('channel', 'left', 'invited_at')
+
+    # Faqat o'qish uchun mo'ljallangan maydonlar (avtomatik to'ldiriladi)
+    readonly_fields = ('invited_at', 'left_at')
+

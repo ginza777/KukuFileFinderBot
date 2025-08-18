@@ -21,7 +21,7 @@ from .documents import TgFileDocument
 from .keyboard import *
 from .models import User, Location, Language, Broadcast, TgFile, SearchQuery  # Language modelini import qilish
 from .tasks import start_broadcast_task
-from .utils import update_or_create_user, admin_only
+from .utils import update_or_create_user, admin_only, channel_subscribe
 
 logger = logging.getLogger(__name__)
 
@@ -180,20 +180,32 @@ async def location_handler(update: Update, context: CallbackContext, user, langu
     )
 
 
+# views.py
+
 @update_or_create_user
 async def check_subscription_channel(update: Update, context: CallbackContext, user, language) -> None:
     query = update.callback_query
-    reply_markup, subscribed_status = await keyboard_checked_subscription_channel(user.telegram_id, context.bot)
 
-    if query.message.reply_markup == reply_markup:
-        await query.answer()  # Foydalanuvchiga hech narsa o'zgarmaganini bildirish
-        return
+    # Har safar tugma bosilganda obuna holatini qaytadan tekshiramiz
+    # Bu funksiya keyboard.py faylida joylashgan
+    reply_markup, is_subscribed = await keyboard_checked_subscription_channel(user.telegram_id, context.bot)
 
-    if subscribed_status:
+    # Natijani tekshiramiz
+    if is_subscribed:
+        # Agar foydalanuvchi barcha kanallarga obuna bo'lgan bo'lsa:
+        # Xabar matnini o'zgartirib, to'liq ruxsat berilganini aytamiz va tugmalarni olib tashlaymiz.
         await query.edit_message_text(translation.full_permission[language])
+        await query.answer(translation.succes_subscribe[language])  # Foydalanuvchiga kichik bildirishnoma
     else:
-        await query.edit_message_reply_markup(reply_markup)
+        # Agar foydalanuvchi kamida bitta kanalga obuna bo'lmagan bo'lsa:
+        # Xabarni o'zgartirmaymiz (bu xatolikni oldini oladi).
+        # Buning o'rniga, ekranda qalqib chiquvchi ogohlantirish ko'rsatamiz.
         await query.answer(translation.not_subscribed[language], show_alert=True)
+
+        # (Ixtiyoriy) Agar kanallar holati o'zgargan bo'lsa (masalan, bittasiga obuna bo'lib, ikkinchisiga bo'lmasa),
+        # klaviaturani yangilashimiz mumkin. Buning uchun eski klaviatura bilan solishtiramiz.
+        if query.message.reply_markup != reply_markup:
+            await query.edit_message_reply_markup(reply_markup)
 
 
 # --- Admin Handlers ---
@@ -340,6 +352,8 @@ async def main_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return await about(update, context)
     elif text == translation.share_bot_button[language].lower():
         return await share_bot(update, context)
+    elif text == translation.text[language].lower():
+        return await start(update, context)
 
     search_mode = context.user_data.get('default_search_mode', 'normal')
 
@@ -391,6 +405,7 @@ async def main_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     reply_markup = build_search_results_keyboard(page_obj, files_on_page, search_mode, language)
 
     await update.message.reply_text(response_text, reply_markup=reply_markup)
+
 
 @update_or_create_user
 async def handle_search_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User,

@@ -1,10 +1,6 @@
-from asgiref.sync import sync_to_async
-from telegram import Bot
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.error import BadRequest
-
-from . import translation
-from .models import SubscribeChannel
+from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import InlineKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 
 def language_list_keyboard():
@@ -24,15 +20,8 @@ def language_list_keyboard():
 
 
 def restart_keyboard(lang) -> ReplyKeyboardMarkup:
-    text = {
-        "uz": "boshlash",
-        "en": "restart",
-        "ru": "перезапуск",
-        "tr": "yeniden başlat"
-    }
-
     buttons = [
-        [KeyboardButton(text[lang])]
+        [KeyboardButton(translation.text[lang])]
     ]
 
     return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
@@ -126,15 +115,29 @@ def make_keyboard_for_help_command() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
+from asgiref.sync import sync_to_async
+from .models import SubscribeChannel
+from . import translation
+
+
 async def keyboard_checked_subscription_channel(user_id, bot):
-    channels = await sync_to_async(list)(SubscribeChannel.objects.filter(active=True))
+    # --- O'ZGARTIRILGAN QISM ---
+    # .select_related('bot') qo'shildi. Bu SubscribeChannel obyektlari bilan birga
+    # ularga bog'liq bo'lgan Bot obyektlarini ham bitta so'rovda yuklab oladi.
+    channels_query = SubscribeChannel.objects.select_related('bot').filter(active=True)
+    channels = await sync_to_async(list)(channels_query)
+    # --- O'ZGARTIRISH TUGADI ---
+
     buttons = []
     is_subscribed = True
 
     for idx, channel in enumerate(channels):
         try:
-            # Telegram Bot obyekti yaratish
-            token = channel.token
+            # Endi channel.bot.token murojaati yangi DB so'rovini yubormaydi,
+            # chunki 'bot' obyekti oldindan yuklab olingan.
+            token = channel.bot.token
             bot_instance = Bot(token=token)
 
             # Foydalanuvchining obunachiligini tekshirish
@@ -152,7 +155,7 @@ async def keyboard_checked_subscription_channel(user_id, bot):
         buttons.append([
             InlineKeyboardButton(
                 text=f"Channel {idx + 1} {subscription_status}",
-                url=channel.channel_link if channel.private else f"https://t.me/{channel.channel_username}"
+                url=channel.get_channel_link  # Model property ishlatilgani yaxshiroq
             )
         ])
         if not subscribed:

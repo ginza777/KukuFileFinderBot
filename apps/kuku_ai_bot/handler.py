@@ -4,12 +4,12 @@ from telegram.ext import (
     MessageHandler,
     CallbackQueryHandler,
     filters,
-    ConversationHandler,
-)
+    ConversationHandler, )
+
+from .inviteuser import track_group_joins
 from .views import (
     # Asosiy foydalanuvchi funksiyalari
     start,
-    ask_language,
     language_choice_handle,
 
     # Admin funksiyalari
@@ -62,8 +62,8 @@ def get_application(token: str) -> Application:
         )
 
         # --- BARCHA HANDLER'LARNING YAGONA RO'YXATI ---
-        # Handler'larning tartibi bot mantig'i uchun juda muhim.
         handlers = [
+            MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, track_group_joins),
             # 1. SUHBATLAR (buyruqlarni birinchi bo'lib ushlab olishi uchun)
             broadcast_conv_handler,
 
@@ -84,8 +84,6 @@ def get_application(token: str) -> Application:
             CallbackQueryHandler(check_subscription_channel, pattern="^check_subscription"),
 
             # 4. MATNLI XABARLAR UCHUN YAGONA MARKAZIY HANDLER
-            # Bu handler barcha tugmalarni va qidiruv so'rovlarini boshqaradi.
-            # U ro'yxatning oxirida turishi kerak, chunki u barcha buyruq bo'lmagan matnlarni ushlab oladi.
             MessageHandler(filters.TEXT & ~filters.COMMAND, main_text_handler),
 
             # 5. BOSHQA TURDAGI XABARLAR (masalan, joylashuv)

@@ -1,6 +1,4 @@
-full_permission = "✅ You have full permission to use the bot \n\n tap to /start"
 unsubscribed = "❌ Please subscribe to all channels to use the bot"
-succes_subscribe = "✅ Successfully subscribed"
 check_subscribing = "check subscribing ✅"
 
 subscribe_channel_text = {
@@ -9,7 +7,26 @@ subscribe_channel_text = {
     "ru": "Пожалуйста, нажмите �� 'Проверить подписку' после подписки на канал.",
     "tr": "Lütfen bir kanala abone oldenten sonra 👉 'Aboneliği Kontrol Et' düğmesine basın."
 }
+full_permission = {
+    "en": "✅ You have full permission to use the bot. Type /start to begin.",
+    "uz": "✅ Botdan to'liq foydalanishga ruxsatingiz bor. Boshlash uchun /start bosing.",
+    "ru": "✅ У вас есть полный доступ к боту. Введите /start, чтобы начать.",
+    "tr": "✅ Botu kullanmak için tam izniniz var. Başlamak için /start yazın."
+}
 
+not_subscribed = {
+    "en": "❌ Please subscribe to all channels to use the bot",
+    "uz": "❌ Iltimos, botdan foydalanish uchun barcha kanallarga obuna bo'ling",
+    "ru": "❌ Пожалуйста, подпишитесь на все каналы, чтобы использовать бота",
+    "tr": "❌ Lütfen botu kullanmak için tüm kanallara abone olun"
+}
+
+succes_subscribe = {
+    "en": "✅ Subscription confirmed!",
+    "uz": "✅ Obuna tasdiqlandi!",
+    "ru": "✅ Подписка подтверждена!",
+    "tr": "✅ Abonelik doğrulandı!"
+}
 start_created = "Sup, {first_name}!"
 github_button_text = "GitHub"
 
@@ -206,3 +223,9 @@ help_text = {"uz": "📚 Yordam", "ru": "📚 Помощь", "en": "📚 Help", 
 share_bot_button = {"uz": "📤 Botni ulashish", "ru": "📤 Поделиться ботом", "en": "📤 Share Bot", "tr": "📤 Botu paylaş"}
 about_us = {"uz": "📞 Biz haqimizda", "ru": "📞 О нас", "en": "📞 About Us", "tr": "📞 Hakkımızda"}
 admin_button_text = "Admin 🤖"
+text = {
+    "uz": "boshlash",
+    "en": "restart",
+    "ru": "перезапуск",
+    "tr": "yeniden başlat"
+}

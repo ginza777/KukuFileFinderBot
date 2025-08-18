@@ -29,6 +29,7 @@ async def bot_webhook(request, token):
 
     try:
         data = json.loads(request.body.decode("utf-8"))
+        print(data)
     except json.JSONDecodeError:
         logger.warning("Received invalid JSON in webhook")
         return JsonResponse({"status": "invalid json"}, status=400)

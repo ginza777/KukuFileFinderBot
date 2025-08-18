@@ -2,6 +2,8 @@
 import asyncio
 import logging
 import os  # fayl kengaytmasini olish uchunk
+import asyncio
+from telegram.error import TelegramError
 
 import magic  # "python-magic" kutubxonasini import qilamiz
 import requests
@@ -187,7 +189,7 @@ class SubscribeChannel(models.Model):
     channel_username = models.CharField(max_length=100, unique=True, null=True, blank=True)
     channel_link = models.URLField(max_length=255, blank=True, null=True)
     channel_id = models.CharField(max_length=100, unique=True)
-    bot = models.ForeignKey(Bot, on_delete=models.CASCADE, related_name="subscription_channels", null=True, blank=True,
+    bot = models.ForeignKey(Bot, on_delete=models.CASCADE, related_name="subscription_channels",
                             help_text=_("The bot that manages this channel."))
     active = models.BooleanField(default=True)
     private = models.BooleanField(default=False)
@@ -210,20 +212,27 @@ class SubscribeChannel(models.Model):
             raise ValidationError(_("A private channel must have an invitation link."))
         if not self.private and not self.channel_username:
             raise ValidationError(_("A public channel must have a username."))
+
+        # --- O'ZGARTIRILGAN QISM ---
         if self.bot and self.bot.token and self.channel_id:
             try:
-                # Run the async function from this sync method using asyncio.run()
+                # Sinxron `clean` metodi ichidan asinxron funksiyani
+                # `asyncio.run()` yordamida ishga tushiramiz.
                 is_admin = asyncio.run(
                     check_bot_is_admin_in_channel(self.channel_id, self.bot.token)
                 )
+                print(f"Admin status for {self.channel_id}: {is_admin}")
 
-                # Corrected Logic: Raise error if the bot is NOT an admin.
+                # Mantiq to'g'irlandi: Agar bot admin bo'lmasa, xatolik berish kerak.
                 if not is_admin:
                     raise ValidationError(
                         _("The bot is not an administrator in the specified channel. Please add the bot as an admin and try again.")
                     )
+            except TelegramError as e:
+                # Telegram API'dan keladigan maxsus xatoliklarni ushlab olamiz
+                raise ValidationError(f"Telegram API error: {e.message}")
             except Exception as e:
-                # Catch potential network or API errors
+                # Boshqa kutilmagan xatoliklar uchun
                 raise ValidationError(f"Failed to verify bot admin status: {e}")
 
     def save(self, *args, **kwargs):
@@ -414,3 +423,41 @@ class TgFile(models.Model):
 
     def __str__(self):
         return self.title
+
+
+# models.py
+
+class InvitedUser(models.Model):
+    """
+    Tracks which user invited another user to a specific subscription channel.
+    """
+    channel = models.ForeignKey(
+        SubscribeChannel,
+        on_delete=models.CASCADE,
+        related_name='invited_members',
+        verbose_name=_("Channel")
+    )
+    invited_by = models.ForeignKey(
+        User,  # bu bot foydalanuvchisi (kim taklif qildi)
+        on_delete=models.CASCADE,
+        related_name='invited_users',
+        verbose_name=_("Invited By")
+    )
+    telegram_id = models.BigIntegerField()
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    last_name = models.CharField(max_length=100, blank=True, null=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
+    invited_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Invited At"))
+    left = models.BooleanField(default=False, verbose_name=_("Left the Channel"))
+    left_at = models.DateTimeField(null=True, blank=True, verbose_name=_("Left At"))
+
+    class Meta:
+        verbose_name = _("Invited User")
+        verbose_name_plural = _("Invited Users")
+        # Bir foydalanuvchi bir kanalga faqat bir marta taklif qilinishi mumkin
+        unique_together = ('channel', 'telegram_id')
+        ordering = ['-invited_at']
+
+    def __str__(self):
+        status = "left" if self.left else "active"
+        return f"{self.first_name or ''} {self.last_name or ''} (@{self.username}) [{status}]"
