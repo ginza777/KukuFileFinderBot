@@ -229,3 +229,9 @@ text = {
     "ru": "перезапуск",
     "tr": "yeniden başlat"
 }
+start_required = {
+    "uz": "Iltimos, botni ishga tushirish uchun /start buyrug'ini bosing.",
+    "en": "Please press /start to run the bot.",
+    "ru": "Пожалуйста, нажмите /start, чтобы запустить бота.",
+    "tr": "Lütfen botu çalıştırmak için /start'a basın."
+}

@@ -1,98 +1,88 @@
+# handler.py
+
 from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    filters,
-    ConversationHandler, )
-
-from .inviteuser import track_group_joins
-from .views import (
-    # Asosiy foydalanuvchi funksiyalari
-    start,
-    language_choice_handle,
-
-    # Admin funksiyalari
-    admin,
-    stats,
-    backup_db,
-    export_users,
-    ask_for_location,
-    location_handler,
-    secret_level,
-
-    # Obuna tekshiruvi
-    check_subscription_channel,
-
-    # Reklama yuborish suhbati (o'zgarishsiz qoladi)
-    start_broadcast_conversation,
-    receive_broadcast_message,
-    cancel_broadcast_conversation,
-    handle_broadcast_confirmation,
-    AWAIT_BROADCAST_MESSAGE,
-
-    # Yangi soddalashtirilgan qidiruv va matn handler'lari
-    main_text_handler,
-    handle_search_pagination,
-    send_file_by_callback,
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
+    filters, ConversationHandler,
 )
 
-# Bot ilovalari uchun global kesh
+from .views import (
+    start, ask_language, language_choice_handle,
+    toggle_search_mode, help_handler, about_handler, share_bot_handler,
+    main_text_handler, handle_search_pagination, send_file_by_callback
+)
+from .admin_views import (
+    admin_panel, stats, backup_db, export_users, secret_level,
+    ask_location, location_handler  # YANGI FUNKSIYALARNI IMPORT QILAMIZ
+)
+from .broadcast_views import (
+    start_broadcast_conversation, receive_broadcast_message,
+    cancel_broadcast_conversation, handle_broadcast_confirmation,
+    AWAIT_BROADCAST_MESSAGE
+)
+from .translation import (
+    search, deep_search, help_text, about_us,
+    share_bot_button, change_language, admin_button_text, text as restart_text
+)
+
 telegram_applications = {}
 
 
 def get_application(token: str) -> Application:
-    """
-    Berilgan bot tokeni uchun Application obyektini yaratadi yoki keshdan oladi
-    va barcha kerakli handler'larni to'g'ri tartibda sozlaydi.
-    """
     if token not in telegram_applications:
         application = Application.builder().token(token).build()
 
-        # --- SUHBAT HANDLER'LARI ---
-        # Reklama yuborish uchun ConversationHandler (o'zgarishsiz qoladi)
-        broadcast_conv_handler = ConversationHandler(
+        broadcast_conv = ConversationHandler(
             entry_points=[CommandHandler("broadcast", start_broadcast_conversation)],
-            states={
-                AWAIT_BROADCAST_MESSAGE: [
-                    MessageHandler(~filters.COMMAND, receive_broadcast_message)
-                ],
-            },
+            states={AWAIT_BROADCAST_MESSAGE: [MessageHandler(~filters.COMMAND, receive_broadcast_message)]},
             fallbacks=[CommandHandler("cancel", cancel_broadcast_conversation)],
         )
 
-        # --- BARCHA HANDLER'LARNING YAGONA RO'YXATI ---
-        handlers = [
-            MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, track_group_joins),
-            # 1. SUHBATLAR (buyruqlarni birinchi bo'lib ushlab olishi uchun)
-            broadcast_conv_handler,
+        all_button_texts = [
+            *search.values(), *deep_search.values(), *help_text.values(),
+            *about_us.values(), *share_bot_button.values(), *change_language.values(),
+            admin_button_text, *restart_text.values()
+        ]
+        button_filter = filters.Text(all_button_texts)
 
-            # 2. ANIQ BUYRUQLAR (/start, /admin kabi)
+        handlers = [
+            broadcast_conv,
+
+            # --- Aniq Buyruqlar ---
             CommandHandler("start", start),
-            CommandHandler("admin", admin),
+            CommandHandler("help", help_handler),
+            CommandHandler("about", about_handler),
+            CommandHandler("language", ask_language),
+
+            # --- Admin Buyruqlari ---
+            CommandHandler("admin", admin_panel),
             CommandHandler("stats", stats),
             CommandHandler("backup_db", backup_db),
             CommandHandler("export_users", export_users),
-            CommandHandler("ask_location", ask_for_location),
+            CommandHandler("ask_location", ask_location),  # /ask_location BUYRUG'I QO'SHILDI
 
-            # 3. CALLBACK SO'ROVLARI (inline tugmalar uchun)
+            # --- Callback So'rovlari ---
             CallbackQueryHandler(handle_broadcast_confirmation, pattern="^brdcast_"),
             CallbackQueryHandler(handle_search_pagination, pattern="^search_"),
             CallbackQueryHandler(send_file_by_callback, pattern="^getfile_"),
             CallbackQueryHandler(language_choice_handle, pattern="^language_setting_"),
             CallbackQueryHandler(secret_level, pattern="^SCRT_LVL"),
-            CallbackQueryHandler(check_subscription_channel, pattern="^check_subscription"),
 
-            # 4. MATNLI XABARLAR UCHUN YAGONA MARKAZIY HANDLER
-            MessageHandler(filters.TEXT & ~filters.COMMAND, main_text_handler),
+            # --- Tugmalar va Maxsus Xabar Turlari ---
+            MessageHandler(filters.Regex(f"^({'|'.join(search.values())}|{'|'.join(deep_search.values())})$"),
+                           toggle_search_mode),
+            MessageHandler(filters.Regex(f"^({'|'.join(help_text.values())})$"), help_handler),
+            MessageHandler(filters.Regex(f"^({'|'.join(about_us.values())})$"), about_handler),
+            MessageHandler(filters.Regex(f"^({'|'.join(share_bot_button.values())})$"), share_bot_handler),
+            MessageHandler(filters.Regex(f"^({'|'.join(change_language.values())})$"), ask_language),
+            MessageHandler(filters.Text(admin_button_text), admin_panel),
+            MessageHandler(filters.Regex(f"^({'|'.join(restart_text.values())})$"), start),
+            MessageHandler(filters.LOCATION, location_handler),  # YUBORILGAN LOKATSIYANI QABUL QILUVCHI HANDLER
 
-            # 5. BOSHQA TURDAGI XABARLAR (masalan, joylashuv)
-            MessageHandler(filters.LOCATION, location_handler),
+            # --- Qolgan barcha matnli xabarlar (Qidiruv) ---
+            MessageHandler(filters.TEXT & ~filters.COMMAND & ~button_filter, main_text_handler),
         ]
 
-        # Barcha handler'larni bitta chaqiruv bilan qo'shamiz
         application.add_handlers(handlers)
-
         telegram_applications[token] = application
 
     return telegram_applications[token]
