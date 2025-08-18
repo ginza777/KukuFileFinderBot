@@ -1,6 +1,5 @@
 import logging.config
 import os
-from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -26,7 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # third
-'django_elasticsearch_dsl',
+    'django_elasticsearch_dsl',
 
     'django_celery_beat',
     'django_celery_results',
@@ -38,6 +37,7 @@ INSTALLED_APPS = [
     # local
     "apps.kuku_ai_bot",
     "apps.webapp",
+    "apps.parsing",
 
 ]
 
@@ -120,8 +120,6 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-
-
 
 LANGUAGE_CODE = "uz"
 
@@ -222,7 +220,6 @@ ELASTICSEARCH_DSL = {
 
 # Prometheus
 PROMETHEUS_METRICS_ENABLED = os.getenv('PROMETHEUS_METRICS_ENABLED', 'true').lower() == 'true'
-
 
 STORAGES = {
     # This key is for handling user-uploaded files (FileField, ImageField)
