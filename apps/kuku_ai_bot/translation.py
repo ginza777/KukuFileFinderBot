@@ -44,16 +44,12 @@ help_message = {
     "tr": "\n🆘Yardım!\nEğer botun yaratma hakkında sorularınız veya önerileriniz varsa, aşağıdaki düğmeye basarak bot yaratıcısına başvurabilirsiniz",
 }
 
-github_button_text = "GitHub"
-
 secret_level_button_text = {
     "uz": "Sirli daraja🗝",
     "ru": "Секретный уровень🗝",
     "en": "Secret level🗝",
     "tr": "Gizli seviye🗝"
 }
-
-admin_button_text = "Admin 🤖"
 
 about_message = {
     "uz": "\n⛳Bot haqida!\nAgar sizda bot yaratish haqida savollar yoki takliflar bo'lsa, quyidagi tugmani bosib bot yaratuvchisiga murojaat qila olasiz",
@@ -92,10 +88,14 @@ movie_code = {
 }
 
 share_bot_text = {
-    "uz": "🍀",# Hd ,4k kinolar 🎥\n🍀Saralangan top dagi kinolar🍿\n🍀Kino kodini yuboring va kinoni yuklab oling\n🍀Barcha kinolar saralangan ,trenddagi kinolar\n🍀Kino kodini yuboring va kinoni yuklab oling\n🍀Botni do'stlaringiz bilan ulashing\n🍀Bot uchun havola :@uzbek_kino_time_bot\n🍀Kanalimiz : @uzbek_kino_time\n",
-    "en": "🍀", #Full Hd ,4k movies 🎥\n🍀Top rated movies🍿\n🍀Send movie code and download the movie\n🍀All movies are rated, trending movies\n🍀Send movie code and download the movie\n🍀Share the bot with your friends\n🍀Bot link :@uzbek_kino_time_bot\n🍀Our channel : @uzbek_kino_time\n",
-    "ru": "🍀",#Full Hd ,4k фильмы 🎥\n🍀Лучшие фильмы🍿\n🍀Отправьте код фильма и загрузите фильм\n🍀Все фильмы оценены, трендовые фильмы\n🍀Отправьте код фильма и загрузите фильм\n🍀Поделитесь ботом с друзьями\n🍀Ссылка на бота :@uzbek_kino_time_bot\n🍀Наш канал : @uzbek_kino_time\n",
-    "tr": "🍀",#Full Hd ,4k filmler 🎥\n🍀En değerli filmler🍿\n🍀Filmin kodunu gönderin ve filmi indirin\n🍀Tüm filmler değerlendirilmiş, trend filmler\n🍀Filmin kodunu gönderin ve filmi indirin\n🍀Botu arkadaşlarınızla paylaşın\n🍀Bot bağlantısı :@uzbek_kino_time_bot\n🍀Kanalımız : @uzbek_kino_time\n",
+    "uz": "🍀",
+    # Hd ,4k kinolar 🎥\n🍀Saralangan top dagi kinolar🍿\n🍀Kino kodini yuboring va kinoni yuklab oling\n🍀Barcha kinolar saralangan ,trenddagi kinolar\n🍀Kino kodini yuboring va kinoni yuklab oling\n🍀Botni do'stlaringiz bilan ulashing\n🍀Bot uchun havola :@uzbek_kino_time_bot\n🍀Kanalimiz : @uzbek_kino_time\n",
+    "en": "🍀",
+    # Full Hd ,4k movies 🎥\n🍀Top rated movies🍿\n🍀Send movie code and download the movie\n🍀All movies are rated, trending movies\n🍀Send movie code and download the movie\n🍀Share the bot with your friends\n🍀Bot link :@uzbek_kino_time_bot\n🍀Our channel : @uzbek_kino_time\n",
+    "ru": "🍀",
+    # Full Hd ,4k фильмы 🎥\n🍀Лучшие фильмы🍿\n🍀Отправьте код фильма и загрузите фильм\n🍀Все фильмы оценены, трендовые фильмы\n🍀Отправьте код фильма и загрузите фильм\n🍀Поделитесь ботом с друзьями\n🍀Ссылка на бота :@uzbek_kino_time_bot\n🍀Наш канал : @uzbek_kino_time\n",
+    "tr": "🍀",
+    # Full Hd ,4k filmler 🎥\n🍀En değerli filmler🍿\n🍀Filmin kodunu gönderin ve filmi indirin\n🍀Tüm filmler değerlendirilmiş, trend filmler\n🍀Filmin kodunu gönderin ve filmi indirin\n🍀Botu arkadaşlarınızla paylaşın\n🍀Bot bağlantısı :@uzbek_kino_time_bot\n🍀Kanalımız : @uzbek_kino_time\n",
 }
 
 # languages
@@ -137,9 +137,72 @@ secret_admin_commands = (f"⚠️ Secret Admin commands\n"
 users_amount_stat = "<b>Users</b>: {user_count}\n" \
                     "<b>24h active</b>: {active_24}"
 
-
 SEND_LOCATION = "Send 🌏🌎🌍"
 share_location = "Would you mind sharing your location?"
 thanks_for_location = "Thanks for 🌏🌎🌍"
 
+search_prompt = {
+    "uz": "🔍 Qidirish uchun so'z yoki jumla yuboring:",
+    "ru": "🔍 Отправьте слово или фразу для поиска:",
+    "en": "🔍 Send a word or phrase to search for:",
+    "tr": "🔍 Aramak için bir kelime veya cümle gönderin:",
+}
 
+deep_search_prompt = {
+    "uz": "🔎 Fayllarning ichidan qidirish uchun so'z yoki jumla yuboring:",
+    "ru": "🔎 Отправьте слово или фразу для поиска внутри файлов:",
+    "en": "🔎 Send a word or phrase to search inside files:",
+    "tr": "🔎 Dosyaların içinde aramak için bir kelime veya cümle gönderin:",
+}
+
+search_results_found = {
+    "uz": "🔍 \"{query}\" so'rovi bo'yicha jami {count} ta natija topildi.",
+    "ru": "🔍 По вашему запросу \"{query}\" найдено {count} результатов.",
+    "en": "🔍 Found {count} results for your query \"{query}\".",
+    "tr": "🔍 Sorgunuz \"{query}\" için {count} sonuç bulundu.",
+}
+
+search_no_results = {
+    "uz": "😔 Afsus, \"{query}\" so'rovi bo'yicha hech narsa topilmadi.",
+    "ru": "😔 К сожалению, по вашему запросу \"{query}\" ничего не найдено.",
+    "en": "😔 Sorry, no results found for \"{query}\".",
+    "tr": "😔 Üzgünüz, \"{query}\" sorgunuz için sonuç bulunamadı.",
+}
+
+pagination_prev = {
+    "uz": "⬅️ Orqaga",
+    "ru": "⬅️ Назад",
+    "en": "⬅️ Prev",
+    "tr": "⬅️ Geri",
+}
+
+pagination_next = {
+    "uz": "➡️ Oldinga",
+    "ru": "➡️ Вперёд",
+    "en": "➡️ Next",
+    "tr": "➡️ İleri",
+}
+
+normal_search_mode_on = {
+    "uz": "✅ Oddiy qidiruv rejimi yoqildi. Endi istalgan so'zni yuborib qidirishingiz mumkin.",
+    "ru": "✅ Включен обычный режим поиска. Теперь вы можете искать, отправляя любое слово.",
+    "en": "✅ Normal search mode is on. You can now search by sending any word.",
+    "tr": "✅ Normal arama modu açık. Artık herhangi bir kelime göndererek arama yapabilirsiniz.",
+}
+
+deep_search_mode_on = {
+    "uz": "✅ Kengaytirilgan qidiruv rejimi yoqildi. Endi fayllar ichidan ham qidiriladi.",
+    "ru": "✅ Включен расширенный режим поиска. Теперь поиск будет вестись и внутри файлов.",
+    "en": "✅ Advanced search mode is on. Now searching will include file contents.",
+    "tr": "✅ Gelişmiş arama modu açık. Artık dosya içerikleri de aranacak.",
+}
+
+search = {"uz": "🔍 Qidirish", "ru": "🔍 Поиск", "en": "🔍 Search", "tr": "🔍 Arama"}
+deep_search = {"uz": "🔎 Kengaytirilgan qidirish", "ru": "🔎 Расширенный поиск", "en": "🔎 Advanced Search",
+               "tr": "🔎 Gelişmiş Arama"}
+change_language = {"uz": "🌍 Tilni o'zgartirish", "ru": "🌍 Изменить язык", "en": "🌍 Change Language",
+                   "tr": "🌍 Dil değiştir"}
+help_text = {"uz": "📚 Yordam", "ru": "📚 Помощь", "en": "📚 Help", "tr": "📚 Yardım"}
+share_bot_button = {"uz": "📤 Botni ulashish", "ru": "📤 Поделиться ботом", "en": "📤 Share Bot", "tr": "📤 Botu paylaş"}
+about_us = {"uz": "📞 Biz haqimizda", "ru": "📞 О нас", "en": "📞 About Us", "tr": "📞 Hakkımızda"}
+admin_button_text = "Admin 🤖"

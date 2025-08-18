@@ -105,45 +105,6 @@ def share_bot_keyboard(lang) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def default_keyboard(lang, admin=False) -> ReplyKeyboardMarkup:
-    change_language = {
-        "uz": "🌍 Tilni o'zgartirish",
-        "ru": "🌍 Изменить язык",
-        "en": "🌍 Change Language",
-        "tr": "🌍 Dil değiştir"
-    }
-    help = {
-        "uz": "📚 Yordam",
-        "ru": "📚 Помощь",
-        "en": "📚 Help",
-        "tr": "📚 Yardım"
-    }
-    share_bot = {
-        "uz": "📤 Botni ulashish",
-        "ru": "📤 Поделиться ботом",
-        "en": "📤 Share Bot",
-        "tr": "📤 Botu paylaş"
-    }
-
-    about_us = {
-        "uz": "📞 Biz haqimizda",
-        "ru": "📞 О_нас",
-        "en": "📞 About Us",
-        "tr": "📞 Hakkımızda"
-    }
-
-    buttons = [
-        # Random movie
-        [KeyboardButton(change_language[lang]), KeyboardButton(help[lang])],
-        # Share the bot
-        [KeyboardButton(share_bot[lang]), KeyboardButton(about_us[lang])]
-
-    ]
-    if admin:
-        buttons.append([KeyboardButton(translation.admin_button_text)])
-    return ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
-
 def make_keyboard_for_about_command(lang, admin=False) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton(translation.admin_button_text, url="https://t.me/@sherzamon_m")]
@@ -230,4 +191,46 @@ def keyboard_check_subscription_channel() -> InlineKeyboardMarkup:
         ]
     ]
 
+    return InlineKeyboardMarkup(buttons)
+
+
+def default_keyboard(lang, admin=False) -> ReplyKeyboardMarkup:
+    buttons = [
+        [KeyboardButton(translation.search[lang]), KeyboardButton(translation.deep_search[lang])],
+        [KeyboardButton(translation.change_language[lang]), KeyboardButton(translation.help_text[lang])],
+        [KeyboardButton(translation.share_bot_button[lang]), KeyboardButton(translation.about_us[lang])]
+    ]
+    if admin:
+        buttons.append([KeyboardButton(translation.admin_button_text)])
+    return ReplyKeyboardMarkup(buttons, resize_keyboard=True, one_time_keyboard=False)
+
+
+def build_search_results_keyboard(page_obj, files_on_page, search_mode, language):
+    buttons = []
+    # Build file buttons with a short callback data
+    for file in files_on_page:
+        buttons.append([InlineKeyboardButton(f"📄 {file.title}", callback_data=f"getfile_{file.id}")])
+
+    # Add pagination buttons
+    pagination_buttons = []
+    if page_obj.has_previous():
+        prev_page = page_obj.previous_page_number()
+        # The callback data is now short and does not include the query text
+        pagination_buttons.append(
+            InlineKeyboardButton(translation.pagination_prev[language],
+                                 callback_data=f"search_{search_mode}_{prev_page}")
+        )
+
+    current_page_text = f"Page {page_obj.number}/{page_obj.paginator.num_pages}"
+    pagination_buttons.append(InlineKeyboardButton(current_page_text, callback_data="ignore"))
+
+    if page_obj.has_next():
+        next_page = page_obj.next_page_number()
+        # The callback data is now short and does not include the query text
+        pagination_buttons.append(
+            InlineKeyboardButton(translation.pagination_next[language],
+                                 callback_data=f"search_{search_mode}_{next_page}")
+        )
+
+    buttons.append(pagination_buttons)
     return InlineKeyboardMarkup(buttons)

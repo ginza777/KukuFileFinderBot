@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ file.title }} | Fayllar Arxivi{% endblock %}
+{% block description %}{{ file.description|truncatewords:25 }}{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="card-title">{{ file.title }}</h1>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        Turi: {{ file.get_file_type_display }} | Hajmi: {{ file.size_in_bytes|filesizeformat }} | Yuklandi: {{ file.uploaded_at|date:"d.m.Y" }}
+                    </h6>
+                    <hr>
+                    <p class="card-text mt-4">
+                        <strong>Tavsif:</strong><br>
+                        {{ file.description|linebreaks }}
+                    </p>
+                    <a href="https://t.me/{{ bot_username }}?start=file_{{ file.id }}" target="_blank" class="btn btn-primary btn-lg mt-3">
+                        📥 Telegram bot orqali yuklab olish
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <h4>O'xshash fayllar</h4>
+            <div class="list-group">
+                {% for related in related_files %}
+                    <a href="{% url 'file-detail' pk=related.pk %}" class="list-group-item list-group-item-action">
+                        {{ related.title }}
+                        <br>
+                        <small class="text-muted">{{ related.get_file_type_display }}</small>
+                    </a>
+                {% empty %}
+                    <p>O'xshash fayllar topilmadi.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

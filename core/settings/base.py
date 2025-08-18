@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # third
+'django_elasticsearch_dsl',
 
     'django_celery_beat',
     'django_celery_results',
@@ -35,7 +36,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "rosetta",
     # local
-    "apps.common_bot",
+    "apps.kuku_ai_bot",
+    "apps.webapp",
 
 ]
 
@@ -119,11 +121,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-STORAGES = {
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+
 
 LANGUAGE_CODE = "uz"
 
@@ -173,6 +171,8 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 broker_connection_retry_on_startup = True
 CELERY_TIMEZONE = "Asia/Tashkent"
 
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
@@ -205,5 +205,32 @@ logging.config.dictConfig({
 })
 
 WEBHOOK_URL = env.str("WEBHOOK_URL", "https://bot.zamonsher.icu")
-CELERY_WEBHOOK=env.str("CELERY_WEBHOOK","False")
+CELERY_WEBHOOK = env.str("CELERY_WEBHOOK", "False")
 APPEND_SLASH = False
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', 'kuku_student_bot')
+
+# Elasticsearch
+ES_URL = os.getenv('ES_URL', 'http://elasticsearch:9200')
+ES_INDEX = os.getenv('ES_INDEX', 'documents')
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200'
+    },
+}
+
+# Prometheus
+PROMETHEUS_METRICS_ENABLED = os.getenv('PROMETHEUS_METRICS_ENABLED', 'true').lower() == 'true'
+
+
+STORAGES = {
+    # This key is for handling user-uploaded files (FileField, ImageField)
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    # This key is for handling static files (run collectstatic)
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}

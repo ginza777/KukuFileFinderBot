@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.db import models
-from .forms import SubscribeChannelForm
-from .models import Bot, User, SubscribeChannel, BroadcastRecipient
-from .models import Location
-from .tasks import send_message_to_user_task
 from django.db.models import Count
 
+from .forms import SubscribeChannelForm
 from .models import Bot, User, Broadcast, BroadcastRecipient
+from .models import Location
+from .models import SubscribeChannel, TgFile
+from .tasks import send_message_to_user_task
 
 
 @admin.register(Location)
@@ -70,7 +70,13 @@ class BroadcastRecipientInline(admin.TabularInline):
         return False
 
 
-# The main admin class for the Broadcast model
+@admin.register(TgFile)
+class TgFileAdmin(admin.ModelAdmin):
+    list_display = ('title', 'file_type', 'uploaded_by', 'uploaded_at', 'size_in_bytes', 'require_subscription')
+    list_filter = ('file_type', 'require_subscription', 'uploaded_at')
+    search_fields = ('title', 'description')
+
+
 @admin.register(Broadcast)
 class BroadcastAdmin(admin.ModelAdmin):
     list_display = (

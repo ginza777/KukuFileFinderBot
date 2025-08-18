@@ -4,8 +4,6 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
-
-
 from . import views
 from .swagger.schema import swagger_urlpatterns
 
@@ -13,8 +11,9 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('rosetta/', include('rosetta.urls')),
     path('__debug__/', include(debug_toolbar.urls)),
-    path('', views.index, name="index"),
-    path('api/', include('apps.common_bot.urls')),
+    # path('', views.index, name="index"),
+    path('api/', include('apps.kuku_ai_bot.urls')),
+    path('', include('apps.webapp.urls')),
 ]
 
 # swagger

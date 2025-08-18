@@ -6,19 +6,26 @@ import logging
 import os
 import subprocess
 from datetime import datetime, timedelta
-from django.utils import timezone
+
 from django.conf import settings
+from django.core.paginator import Paginator
+from django.utils import timezone
 from django.utils.timezone import now
+from elasticsearch_dsl.query import MultiMatch, QueryString
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import CallbackContext, ContextTypes, ConversationHandler
-from .tasks import start_broadcast_task
+
+from .documents import TgFileDocument
 # Loyihaning lokal modullari
 from .keyboard import *
-from .models import User, Location, Language, Bot, Broadcast  # Language modelini import qilish
+from .models import User, Location, Language, Broadcast, TgFile, SearchQuery  # Language modelini import qilish
+from .tasks import start_broadcast_task
 from .utils import update_or_create_user, admin_only
 
 logger = logging.getLogger(__name__)
+
+AWAIT_BROADCAST_MESSAGE, AWAIT_SEARCH_QUERY = range(2)
 
 
 async def get_user_statistics(bot_username: str) -> dict:
@@ -247,17 +254,6 @@ async def secret_level(update: Update, context: CallbackContext, user) -> None:
     await query.edit_message_text(text, parse_mode=ParseMode.HTML)
 
 
-# Suhbat holatlari uchun konstantalar
-AWAIT_BROADCAST_MESSAGE = 1
-
-
-# ... (get_user_statistics, backup_db kabi servis funksiyalari o'zgarishsiz qoladi) ...
-
-# --- User Handlers (start, ask_language, about, etc. o'zgarishsiz qoladi) ---
-# ...
-
-# --- Broadcast Conversation Handlers ---
-
 @admin_only
 async def start_broadcast_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE, user) -> int:
     """Admindan reklama xabarini forward qilishni so'raydi."""
@@ -324,3 +320,193 @@ async def handle_broadcast_confirmation(update: Update, context: ContextTypes.DE
         start_broadcast_task.delay(broadcast.id)
         await query.edit_message_text(f"✅ Reklama (ID: {broadcast.id}) navbatga qo'yildi!")
 
+
+# search
+@update_or_create_user
+async def main_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User, language: str):
+    """
+    Botga kelgan barcha matnli xabarlarni boshqaradigan markaziy funksiya.
+    """
+    text = update.message.text.lower()
+
+    # 1-PRIORITET: Tugma matnlarini tekshirish (o'zgarishsiz)
+    if text in [translation.search[language].lower(), translation.deep_search[language].lower()]:
+        return await toggle_search_mode(update, context)
+    elif text == translation.change_language[language].lower():
+        return await ask_language(update, context)
+    elif text == translation.help_text[language].lower():
+        return await help(update, context)
+    elif text == translation.about_us[language].lower():
+        return await about(update, context)
+    elif text == translation.share_bot_button[language].lower():
+        return await share_bot(update, context)
+
+    search_mode = context.user_data.get('default_search_mode', 'normal')
+
+    search_fields = []
+    if search_mode == 'deep':
+        # Fayl ichi va boshqa maydonlar uchun ustunlik
+        search_fields = ['title^2', 'description^1', 'file_name^1', 'content^3']
+    else:  # normal
+        # Sarlavha va fayl nomiga yuqori ustunlik
+        search_fields = ['title^5', 'description^1', 'file_name^4']
+
+    # --- O'ZGARTIRILGAN QISM ---
+    # MultiMatch o'rniga QueryString dan foydalanamiz
+    # Bu foydalanuvchi kiritgan so'zning oldidan va orqasidan * belgisini qo'yadi.
+    # Masalan, "res" so'rovi "*res*" ga aylanadi va "resume" so'zining ichidan topiladi.
+    s = TgFileDocument.search().query(
+        QueryString(
+            query=f"*{text}*",  # So'rovni wildcard bilan o'raymiz
+            fields=search_fields,
+            default_operator='AND'  # Agar bir nechta so'z kiritilsa, hammasi qatnashishi shart
+        )
+    )
+    # --- O'ZGARTIRISH TUGADI ---
+
+    all_files_ids = [int(hit.meta.id) for hit in s.scan()]
+
+    await SearchQuery.objects.acreate(
+        user=user, query_text=text, found_results=bool(all_files_ids), is_deep_search=(search_mode == 'deep')
+    )
+
+    if not all_files_ids:
+        await update.message.reply_text(translation.search_no_results[language].format(query=text))
+        return
+
+    # Natijalarni saralash (bu qism kerak bo'lmasligi mumkin, chunki QueryString o'zi saralaydi)
+    s = s.sort({"_score": {"order": "desc"}})
+
+    paginator = Paginator(all_files_ids, 10)
+    page_obj = paginator.get_page(1)
+
+    # Muhim: Paginator bilan to'g'ri ishlash uchun so'rovni saqlab qo'yish kerak
+    context.user_data['last_search_query'] = text
+
+    files_on_page = await sync_to_async(list)(TgFile.objects.filter(id__in=page_obj.object_list))
+
+    response_text = translation.search_results_found[language].format(query=text, count=paginator.count)
+
+    # build_search_results_keyboard funksiyasiga 'text' argumentini olib tashlaymiz
+    reply_markup = build_search_results_keyboard(page_obj, files_on_page, search_mode, language)
+
+    await update.message.reply_text(response_text, reply_markup=reply_markup)
+
+@update_or_create_user
+async def handle_search_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User,
+                                   language: str) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    # Retrieve the search query from user_data
+    query_text = context.user_data.get('last_search_query')
+    if not query_text:
+        await query.edit_message_text("Xatolik: So'rov topilmadi. Iltimos, qayta qidiring.")
+        return
+
+    parts = query.data.split('_')
+    search_type, page_number = parts[1], int(parts[2])
+
+    if search_type == 'deep':
+        search_fields = ['title^2', 'description', 'file_name', 'content^3']
+    else:
+        search_fields = ['title^4', 'description^2', 'file_name']
+
+    s = TgFileDocument.search().query(
+        MultiMatch(query=query_text, fields=search_fields, fuzziness='AUTO')
+    ).sort({"_score": {"order": "desc"}})
+
+    all_files_ids = [int(hit.meta.id) for hit in s.scan()]
+
+    if not all_files_ids:
+        await query.edit_message_text("Natijalar topilmadi.")
+        return
+
+    paginator = Paginator(all_files_ids, 10)
+    page_obj = paginator.get_page(page_number)
+    files_on_page = await sync_to_async(list)(TgFile.objects.filter(id__in=page_obj.object_list))
+
+    response_text = translation.search_results_found[language].format(query=query_text, count=paginator.count)
+    # Pass the query text for display, not for the callback data
+    reply_markup = build_search_results_keyboard(page_obj, files_on_page, search_type, language)
+
+    await query.edit_message_text(text=response_text, reply_markup=reply_markup)
+
+
+@update_or_create_user
+async def toggle_search_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User, language: str):
+    """
+    "Search" va "Advanced Search" tugmalari bosilganda standart qidiruv rejimini o'zgartiradi.
+    """
+    message_text = update.message.text
+
+    is_deep = 'Kengaytirilgan' in message_text or 'Расширенный' in message_text or 'Advanced' in message_text or 'Gelişmiş' in message_text
+    new_mode = 'deep' if is_deep else 'normal'
+
+    context.user_data['default_search_mode'] = new_mode
+
+    if new_mode == 'deep':
+        response_text = translation.deep_search_mode_on[language]
+    else:
+        response_text = translation.normal_search_mode_on[language]
+
+    await update.message.reply_text(response_text)
+
+
+@update_or_create_user
+async def handle_search_pagination(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User,
+                                   language: str) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split('_', 3)
+    search_type, page_number, query_text = parts[1], int(parts[2]), parts[3]
+
+    # Qidiruvni qaytadan bajarish - bu eng barqaror usul
+    if search_type == 'deep':
+        search_fields = ['title^2', 'description', 'file_name', 'content^3']
+    else:
+        search_fields = ['title^4', 'description^2', 'file_name']
+
+    s = TgFileDocument.search().query(
+        MultiMatch(query=query_text, fields=search_fields, fuzziness='AUTO')
+    )
+    all_files_ids = [int(hit.meta.id) for hit in s.scan()]
+
+    if not all_files_ids:
+        await query.edit_message_text("Natijalar topilmadi.")
+        return
+
+    paginator = Paginator(all_files_ids, 10)
+    page_obj = paginator.get_page(page_number)
+    files_on_page = await sync_to_async(list)(TgFile.objects.filter(id__in=page_obj.object_list))
+
+    response_text = translation.search_results_found[language].format(query=query_text, count=paginator.count)
+    reply_markup = build_search_results_keyboard(page_obj, files_on_page, search_type, query_text, language)
+
+    await query.edit_message_text(text=response_text, reply_markup=reply_markup)
+
+
+@update_or_create_user
+async def send_file_by_callback(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User, language: str):
+    """ Inline tugma orqali faylni yuboradi. """
+    query = update.callback_query
+    await query.answer()
+
+    file_id = int(query.data.split('_')[1])
+
+    try:
+        file_to_send = await TgFile.objects.aget(id=file_id)
+        # Faylni yuborish mantiqi (eski kodingizdan olingan va asinxronga moslangan)
+        # Bu qism uchun `send_file_to_user` funksiyasini asinxron qilib qayta yozish kerak
+        # yoki shu yerda logikani takrorlash kerak.
+        await context.bot.send_document(
+            chat_id=user.telegram_id,
+            document=file_to_send.file,
+            filename=file_to_send.file_name,
+            caption=file_to_send.title
+        )
+    except TgFile.DoesNotExist:
+        await context.bot.send_message(chat_id=user.telegram_id, text="Xatolik: Fayl topilmadi.")
+    except Exception as e:
+        await context.bot.send_message(chat_id=user.telegram_id, text=f"Faylni yuborishda xatolik: {e}")

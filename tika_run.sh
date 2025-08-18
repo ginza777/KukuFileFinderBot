@@ -1,0 +1,1 @@
+java -Xms512m -Xmx1024m -jar /var/folders/82/xp48cxdn00gg88bf001bpfb00000gn/T/tika-server.jar --port=9998

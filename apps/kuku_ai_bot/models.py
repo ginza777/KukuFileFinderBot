@@ -1,12 +1,15 @@
 # models.py (Refactored and Optimized Version)
 import asyncio
 import logging
-import requests
+import os  # fayl kengaytmasini olish uchunk
 
+import magic  # "python-magic" kutubxonasini import qilamiz
+import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from telegram import Bot as TelegramBot
 from telegram.error import TelegramError
@@ -263,7 +266,7 @@ class User(models.Model):
     stock_language = models.CharField(max_length=10, choices=Language.choices, default=Language.UZ)
     selected_language = models.CharField(max_length=10, choices=Language.choices, null=True, blank=True)
     deeplink = models.TextField(blank=True, null=True)
-    left=models.BooleanField(default=False)
+    left = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('telegram_id', 'bot')
@@ -299,10 +302,6 @@ class Location(models.Model):
         return f"Location for {self.user} at {self.created_at.strftime('(%H:%M, %d %B %Y)')}"
 
 
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
-
 class Broadcast(models.Model):
     class Status(models.TextChoices):
         DRAFT = 'draft', _('Draft')
@@ -320,6 +319,7 @@ class Broadcast(models.Model):
     def __str__(self):
         return f"Forward {self.message_id} from {self.from_chat_id}"
 
+
 class BroadcastRecipient(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', _('Pending')
@@ -334,3 +334,83 @@ class BroadcastRecipient(models.Model):
 
     class Meta:
         unique_together = ('broadcast', 'user')
+
+
+class SearchQuery(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='search_queries')
+    query_text = models.CharField(max_length=500)
+    found_results = models.BooleanField(default=False)
+    is_deep_search = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"'{self.query_text}' by {self.user}"
+
+
+def upload_to(instance, filename):
+    return f'files/{timezone.now().year}/{timezone.now().month}/{filename}'
+
+
+class TgFile(models.Model):
+    FILE_TYPE_CHOICES = (
+        ('pdf', 'PDF'),
+        ('doc', 'DOC/DOCX'),
+        ('zip', 'ZIP/Archive'),
+        ('media', 'Media'),  # Rasm, video, audio uchun umumiy
+        ('other', 'Other'),
+    )
+
+    title = models.CharField(max_length=255, null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
+    file = models.FileField(upload_to=upload_to)
+    file_name = models.CharField(max_length=255, blank=True, null=True)
+    file_type = models.CharField(max_length=20, choices=FILE_TYPE_CHOICES, default='other')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    size_in_bytes = models.BigIntegerField(default=0)
+    require_subscription = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['file_type']),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Fayl hajmini avtomatik hisoblash (bu qism avval ham bor edi)
+        if self.file and not self.size_in_bytes:
+            self.size_in_bytes = self.file.size
+
+        # --- FAYL TURINI AVTOMATIK ANIQLASH QISMI ---
+        # Agar fayl yangi yuklangan bo'lsa
+        if self.file and not self._state.adding is False:
+            # Faylning boshlang'ich 2KB ma'lumotini o'qib, turini (MIME type) aniqlaymiz
+            # Bu fayl nomidan ko'ra ancha ishonchli usul
+            self.file.seek(0)  # Fayl o'qishni boshidan boshlash
+            mime_type = magic.from_buffer(self.file.read(2048), mime=True)
+            self.file.seek(0)  # Fayl o'qishni yana boshiga qaytaramiz, Django saqlashi uchun
+
+            # Aniqlangan MIME type'ga qarab o'zimizning kategoriyani tanlaymiz
+            if 'pdf' in mime_type:
+                self.file_type = 'pdf'
+            elif 'zip' in mime_type or 'rar' in mime_type or '7z' in mime_type:
+                self.file_type = 'zip'
+            elif 'word' in mime_type or 'document' in mime_type:
+                self.file_type = 'doc'
+            elif 'image' in mime_type or 'video' in mime_type or 'audio' in mime_type:
+                self.file_type = 'media'
+            else:
+                self.file_type = 'other'
+
+        # Fayl nomini "title" ga avtomatik qo'yish (agar bo'sh bo'lsa)
+        if not self.title and self.file:
+            # Fayl nomidan kengaytmasini olib tashlaymiz
+            self.title = os.path.splitext(os.path.basename(self.file.name))[0]
+        if self.file:
+            self.file_name = os.path.basename(self.file.name)
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title
