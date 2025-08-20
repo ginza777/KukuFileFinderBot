@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Django uchun metrikalar (web servisi)
+  - job_name: 'django'
+    static_configs:
+      - targets: ['web:8000']
+    metrics_path: /metrics  # Django uchun metrikalar yo'li
+
+  # Celery uchun metrikalar (agar mavjud bo'lsa)
+  - job_name: 'celery'
+    static_configs:
+      - targets: ['celery:8000'] # Celery servisining manzili va porti
+    metrics_path: /metrics  # Celery uchun metrikalar yo'li

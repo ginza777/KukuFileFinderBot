@@ -14,7 +14,7 @@ DEBUG = env.bool("DEBUG")
 
 ALLOWED_HOSTS = ["*"]
 
-STAGE = 'development'
+STAGE = 'production'
 
 INSTALLED_APPS = [
     "jazzmin",
@@ -89,12 +89,12 @@ if not DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": env.str("DB_ENGINE", "django.db.backends.postgresql_psycopg2"),
-            "NAME": env.str("DB_NAME"),
-            "USER": env.str("DB_USER"),
-            "PASSWORD": env.str("DB_PASSWORD"),
-            "HOST": env.str("DB_HOST"),
-            "PORT": env.str("DB_PORT"),
-            "ATOMIC_REQUESTS": False,
+            "NAME": env.str("POSTGRES_DB"),
+            "USER": env.str("POSTGRES_USER"),
+            "PASSWORD": env.str("POSTGRES_PASSWORD"),
+            "HOST": env.str("POSTGRES_HOST"),
+            "PORT": env.str("POSTGRES_PORT"),
+            "POSTGRES_PORT": False,
         }
     }
 else:
@@ -142,7 +142,7 @@ gettext = lambda s: s  # noqa
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "static"
-STATICFILES_DIRS = (BASE_DIR / "staticfiles",)
+
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -203,7 +203,6 @@ logging.config.dictConfig({
 })
 
 WEBHOOK_URL = env.str("WEBHOOK_URL", "https://bot.zamonsher.icu")
-CELERY_WEBHOOK = env.str("CELERY_WEBHOOK", "False")
 APPEND_SLASH = False
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME', 'kuku_student_bot')

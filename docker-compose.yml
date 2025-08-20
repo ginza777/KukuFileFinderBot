@@ -1,0 +1,133 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn core.asgi:application --host 0.0.0.0 --port 8000
+    environment:
+      - PYTHONPATH=/app  # YANGI QATOR
+    volumes:
+      - .:/app
+      - media-files:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - pgbouncer
+      - redis
+      - elasticsearch
+      - tika
+    networks:
+      - bot-network
+    user: "django"
+
+  postgres:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - bot-network
+    ports:
+      - "5432:5432"
+
+  pgbouncer:
+    image: pgbouncer/pgbouncer:latest
+    container_name: pgbouncer
+    platform: linux/amd64
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_NAME=${POSTGRES_DB}
+    networks:
+      - bot-network
+    depends_on:
+      - postgres
+
+  redis:
+    image: redis:6-alpine
+    container_name: redis_cache
+    networks:
+      - bot-network
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A core worker --loglevel=info
+    environment:
+      - PYTHONPATH=/app  # YANGI QATOR
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - media-files:/app/media
+    networks:
+      - bot-network
+    depends_on:
+      - redis
+      - web
+    user: "django"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - bot-network
+    ports:
+      - "9200:9200"
+
+  tika:
+    image: apache/tika
+    container_name: tika
+    networks:
+      - bot-network
+    ports:
+      - "9998:9998"
+
+  prometheus:
+    image: prom/prometheus:v2.47.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - bot-network
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: grafana
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - bot-network
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres-data:
+  elasticsearch-data:
+  prometheus-data:
+  grafana-data:
+  media-files:
+
+networks:
+  bot-network:
+    driver: bridge
