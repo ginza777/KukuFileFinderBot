@@ -142,6 +142,7 @@ class Bot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
     class Meta:
         verbose_name = _("Bot")
         verbose_name_plural = _("Bots")

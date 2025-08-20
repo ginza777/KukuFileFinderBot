@@ -20,7 +20,7 @@ services:
       - tika
     networks:
       - bot-network
-    user: "django"
+    user: "root"
 
   postgres:
     image: postgres:15
@@ -74,7 +74,7 @@ services:
     depends_on:
       - redis
       - web
-    user: "django"
+    user: "root"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.2

@@ -14,6 +14,8 @@ urlpatterns = [
     # path('', views.index, name="index"),
     path('api/', include('apps.kuku_ai_bot.urls')),
     path('', include('apps.webapp.urls')),
+    path('metrics/', include('django_prometheus.urls')),  # YANGI QATOR
+
 ]
 
 # swagger
