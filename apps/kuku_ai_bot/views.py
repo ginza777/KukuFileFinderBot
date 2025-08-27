@@ -1,12 +1,12 @@
 # views.py
-
+import logging
 from asgiref.sync import sync_to_async
 from django.core.paginator import Paginator
 from elasticsearch_dsl.query import QueryString
 from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
-
+logger = logging.getLogger(__name__)
 from . import translation
 from .documents import TgFileDocument
 from .keyboard import (build_search_results_keyboard, default_keyboard,
@@ -225,7 +225,7 @@ async def send_file_by_callback(update: Update, context: ContextTypes.DEFAULT_TY
             chat_id=user.telegram_id,
             document=tg_file.file.path,
             caption=f"<b>{tg_file.title}</b>\n\n{tg_file.description or ''}",
-            parse_mode=Parse_mode.HTML
+            parse_mode=ParseMode.HTML
         )
     except TgFile.DoesNotExist:
         await context.bot.send_message(chat_id=user.telegram_id, text="Xatolik: Fayl topilmadi.")
