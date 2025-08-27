@@ -2,10 +2,8 @@
 import asyncio
 import logging
 import os  # fayl kengaytmasini olish uchunk
-import asyncio
-from telegram.error import TelegramError
 
-import magic  # "python-magic" kutubxonasini import qilamiz
+import magic
 import requests
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -141,7 +139,6 @@ class Bot(models.Model):
     webhook_url = models.URLField(max_length=255, blank=True, help_text=_("Auto-filled on save"))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
 
     class Meta:
         verbose_name = _("Bot")
@@ -357,6 +354,34 @@ class SearchQuery(models.Model):
         return f"'{self.query_text}' by {self.user}"
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Kategoriya nomi"))
+    slug = models.SlugField(max_length=100, unique=True, help_text=_("URL uchun avtomatik generatsiya qilinadi"))
+
+    class Meta:
+        verbose_name = _("Kategoriya")
+        verbose_name_plural = _("Kategoriyalar")
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class SubCategory(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='subcategories',
+                                 verbose_name=_("Asosiy Kategoriya"))
+    name = models.CharField(max_length=100, unique=True, verbose_name=_("Subkategoriya nomi"))
+    slug = models.SlugField(max_length=100, unique=True, help_text=_("URL uchun avtomatik generatsiya qilinadi"))
+
+    class Meta:
+        verbose_name = _("Subkategoriya")
+        verbose_name_plural = _("Subkategoriyalar")
+        ordering = ['category', 'name']
+
+    def __str__(self):
+        return f"{self.category.name} -> {self.name}"
+
+
 def upload_to(instance, filename):
     return f'files/{timezone.now().year}/{timezone.now().month}/{filename}'
 
@@ -369,7 +394,8 @@ class TgFile(models.Model):
         ('media', 'Media'),  # Rasm, video, audio uchun umumiy
         ('other', 'Other'),
     )
-
+    subcategory = models.ForeignKey(SubCategory, on_delete=models.SET_NULL, null=True, blank=True,
+                                    verbose_name=_("Subkategoriya"))
     title = models.CharField(max_length=255, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     file = models.FileField(upload_to=upload_to)
@@ -388,20 +414,12 @@ class TgFile(models.Model):
         ]
 
     def save(self, *args, **kwargs):
-        # Fayl hajmini avtomatik hisoblash (bu qism avval ham bor edi)
         if self.file and not self.size_in_bytes:
             self.size_in_bytes = self.file.size
-
-        # --- FAYL TURINI AVTOMATIK ANIQLASH QISMI ---
-        # Agar fayl yangi yuklangan bo'lsa
         if self.file and not self._state.adding is False:
-            # Faylning boshlang'ich 2KB ma'lumotini o'qib, turini (MIME type) aniqlaymiz
-            # Bu fayl nomidan ko'ra ancha ishonchli usul
-            self.file.seek(0)  # Fayl o'qishni boshidan boshlash
+            self.file.seek(0)
             mime_type = magic.from_buffer(self.file.read(2048), mime=True)
-            self.file.seek(0)  # Fayl o'qishni yana boshiga qaytaramiz, Django saqlashi uchun
-
-            # Aniqlangan MIME type'ga qarab o'zimizning kategoriyani tanlaymiz
+            self.file.seek(0)
             if 'pdf' in mime_type:
                 self.file_type = 'pdf'
             elif 'zip' in mime_type or 'rar' in mime_type or '7z' in mime_type:
@@ -412,14 +430,10 @@ class TgFile(models.Model):
                 self.file_type = 'media'
             else:
                 self.file_type = 'other'
-
-        # Fayl nomini "title" ga avtomatik qo'yish (agar bo'sh bo'lsa)
         if not self.title and self.file:
-            # Fayl nomidan kengaytmasini olib tashlaymiz
             self.title = os.path.splitext(os.path.basename(self.file.name))[0]
         if self.file:
             self.file_name = os.path.basename(self.file.name)
-
         super().save(*args, **kwargs)
 
     def __str__(self):

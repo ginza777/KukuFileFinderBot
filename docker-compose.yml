@@ -3,9 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uvicorn core.asgi:application --host 0.0.0.0 --port 8000
+    command: uvicorn core.asgi:application --host 0.0.0.0 --port 8000 --workers 4
     environment:
-      - PYTHONPATH=/app  # YANGI QATOR
+      - PYTHONPATH=/app
     volumes:
       - .:/app
       - media-files:/app/media
@@ -20,7 +20,6 @@ services:
       - tika
     networks:
       - bot-network
-    user: "root"
 
   postgres:
     image: postgres:15
@@ -63,7 +62,7 @@ services:
       dockerfile: Dockerfile
     command: celery -A core worker --loglevel=info
     environment:
-      - PYTHONPATH=/app  # YANGI QATOR
+      - PYTHONPATH=/app
     env_file:
       - .env
     volumes:
@@ -74,7 +73,6 @@ services:
     depends_on:
       - redis
       - web
-    user: "root"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.2

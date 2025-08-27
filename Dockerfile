@@ -1,6 +1,10 @@
 # 1. Asosiy image
 FROM python:3.12-slim
 
+# Muhit o'zgaruvchilari
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
 # 2. Ishchi katalog
 WORKDIR /app
 
@@ -22,17 +26,23 @@ RUN pip install --no-cache-dir -r requirements/production.txt
 # 5. Loyiha fayllarini ko‘chirish
 COPY . .
 
-# 6. entrypoint.sh ni executable qilish
+# 6. Huquqlari cheklangan foydalanuvchi yaratish
+RUN addgroup --system django && adduser --system --ingroup django django
+
+# 7. Media va statik fayllar uchun egalikni berish
+# Bu kataloglar docker-compose'da volume sifatida ulanishi mumkin
+RUN mkdir -p /app/media /app/static
+RUN chown -R django:django /app/media /app/static /app
 RUN chmod +x /app/entrypoint.sh
 
-# 7. Fayllarga to'liq ruxsat berish
-RUN chmod 777 -R /app/
+# 8. Yangi foydalanuvchiga o'tish
+USER django
 
-# 8. Statik fayllarni to'plash (root sifatida)
+# 9. Statik fayllarni to'plash (yangi foydalanuvchi sifatida)
 RUN python manage.py collectstatic --no-input
 
-# 9. Port
+# 10. Port
 EXPOSE 8000
 
-# 10. Default buyruq
+# 11. Default buyruq
 ENTRYPOINT ["/app/entrypoint.sh"]

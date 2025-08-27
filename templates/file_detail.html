@@ -1,9 +1,30 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ file.title }} | Fayllar Arxivi{% endblock %}
-{% block description %}{{ file.description|truncatewords:25 }}{% endblock %}
+{% block meta_description %}{{ file.description|truncatewords:25 }}{% endblock %}
+
+{% block og_title %}{{ file.title }} | Fayllar Arxivi{% endblock %}
+{% block og_description %}{{ file.description|truncatewords:25 }}{% endblock %}
+
 
 {% block content %}
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "DigitalDocument",
+      "name": "{{ file.title }}",
+      "description": "{{ file.description|escapejs }}",
+      "url": "{{ request.build_absolute_uri }}",
+      "datePublished": "{{ file.uploaded_at|date:'c' }}",
+      "encodingFormat": "{{ file.get_file_type_display }}",
+      "author": {
+        "@type": "Organization",
+        "name": "Kuku File Finder"
+      }
+    }
+    </script>
+
     <div class="row">
         <div class="col-md-8">
             <div class="card">

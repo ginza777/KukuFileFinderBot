@@ -3,10 +3,26 @@ from django.db import models
 from django.db.models import Count
 
 from .forms import SubscribeChannelForm
-from .models import Bot, User, Broadcast, BroadcastRecipient, SearchQuery, InvitedUser
-from .models import Location
-from .models import SubscribeChannel, TgFile
+# --- YANGI MODELLARNI IMPORT QILISH ---
+from .models import (Bot, User, Broadcast, BroadcastRecipient,
+                     SearchQuery, InvitedUser, Location, SubscribeChannel,
+                     TgFile, Category, SubCategory)
+# --- ----------------------------- ---
 from .tasks import send_message_to_user_task
+
+
+# --- YANGI ADMIN KLASSLAR ---
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'slug')
+    prepopulated_fields = {'slug': ('name',)} # "slug" maydonini avtomatik to'ldirish
+
+@admin.register(SubCategory)
+class SubCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'slug')
+    list_filter = ('category',)
+    prepopulated_fields = {'slug': ('name',)}
+# --- ------------------- ---
 
 
 @admin.register(Location)
@@ -24,36 +40,33 @@ class SubscribeChannelAdmin(admin.ModelAdmin):
 
 class UserInline(admin.TabularInline):
     model = User
-    extra = 0  # Qo'shimcha bo'sh qatorlarni ko'rsatmaydi
-    fields = ('telegram_id', 'first_name', 'last_name', 'username', 'last_active')  # Qatorlar
-    readonly_fields = ('telegram_id', 'first_name', 'last_name', 'username', 'last_active')  # O'qish uchun faqat
-    can_delete = False  # O'chirish opsiyasini o'chiradi
-    show_change_link = True  # Har bir userni o'zgartirish linki
+    extra = 0
+    fields = ('telegram_id', 'first_name', 'last_name', 'username', 'last_active')
+    readonly_fields = ('telegram_id', 'first_name', 'last_name', 'username', 'last_active')
+    can_delete = False
+    show_change_link = True
 
 
 @admin.register(Bot)
 class BotAdmin(admin.ModelAdmin):
-    list_display = ('name', 'token', 'webhook_url')  # Ko'rinishdagi ustunlar
-    search_fields = ('name', 'token')  # Qidiruv maydonlari
-    inlines = [UserInline]  # User modeli Inline sifatida
+    list_display = ('name', 'token', 'webhook_url')
+    search_fields = ('name', 'token')
+    inlines = [UserInline]
 
     def set_webhook_view(self, request, queryset):
-        """
-        Tanlangan botlar uchun webhook o'rnatish.
-        """
         for bot in queryset:
             bot.set_webhook()
         self.message_user(request, "Webhook muvaffaqiyatli o'rnatildi!")
 
-    actions = ['set_webhook_view']  # Actionlar
+    actions = ['set_webhook_view']
 
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('telegram_id', 'username', 'bot', 'last_active', 'deeplink')  # Ko'rinishdagi ustunlar
-    list_filter = ('bot', 'last_active')  # Filter maydonlari
-    search_fields = ('telegram_id', 'username', 'first_name', 'last_name')  # Qidiruv
-    readonly_fields = ('bot', 'telegram_id', 'first_name', 'last_name', 'username', 'last_active')  # O'qish uchun faqat
+    list_display = ('telegram_id', 'username', 'bot', 'last_active', 'deeplink')
+    list_filter = ('bot', 'last_active')
+    search_fields = ('telegram_id', 'username', 'first_name', 'last_name')
+    readonly_fields = ('bot', 'telegram_id', 'first_name', 'last_name', 'username', 'last_active')
 
 
 class BroadcastRecipientInline(admin.TabularInline):
@@ -69,12 +82,14 @@ class BroadcastRecipientInline(admin.TabularInline):
     def has_change_permission(self, request, obj=None):
         return False
 
-
+# --- TgFileAdmin KLASSIGA O'ZGARTIRISH KIRITILDI ---
 @admin.register(TgFile)
 class TgFileAdmin(admin.ModelAdmin):
-    list_display = ('title', 'file_type', 'uploaded_by', 'uploaded_at', 'size_in_bytes', 'require_subscription')
-    list_filter = ('file_type', 'require_subscription', 'uploaded_at')
+    list_display = ('title', 'subcategory', 'file_type', 'uploaded_by', 'uploaded_at', 'size_in_bytes')
+    list_filter = ('subcategory', 'file_type', 'require_subscription', 'uploaded_at') # 'subcategory' filtrga qo'shildi
     search_fields = ('title', 'description')
+    list_select_related = ('subcategory', 'subcategory__category', 'uploaded_by') # DB so'rovlarini optimallashtirish
+# --- -------------------------------------------- ---
 
 
 @admin.register(Broadcast)
@@ -90,8 +105,6 @@ class BroadcastAdmin(admin.ModelAdmin):
         'get_pending_count',
     )
     list_filter = ('status', 'bot', 'scheduled_time')
-
-    # The detail view configuration
     inlines = [BroadcastRecipientInline]
     readonly_fields = (
         'from_chat_id',
@@ -112,11 +125,9 @@ class BroadcastAdmin(admin.ModelAdmin):
         ('get_total_recipients', 'get_sent_count', 'get_failed_count', 'get_pending_count'),
     )
 
-    # Add custom actions to the admin
     actions = ['requeue_failed_recipients']
 
     def get_queryset(self, request):
-        # Optimize database queries by prefetching related counts
         queryset = super().get_queryset(request)
         queryset = queryset.annotate(
             total_recipients=Count('recipients'),
@@ -127,49 +138,33 @@ class BroadcastAdmin(admin.ModelAdmin):
         )
         return queryset
 
-    # --- Custom display fields for the list and detail views ---
-
     def get_total_recipients(self, obj):
         return obj.total_recipients
-
     get_total_recipients.short_description = "Jami Qabul Qiluvchilar"
 
     def get_sent_count(self, obj):
         return obj.sent_recipients
-
     get_sent_count.short_description = "✅ Yuborilgan"
 
     def get_failed_count(self, obj):
         return obj.failed_recipients
-
     get_failed_count.short_description = "❌ Xatolik"
 
     def get_pending_count(self, obj):
         return obj.pending_recipients
-
     get_pending_count.short_description = "⏳ Navbatda"
-
-    # --- Custom Admin Action ---
 
     @admin.action(description="Xatolik bo'lganlarni qayta yuborish")
     def requeue_failed_recipients(self, request, queryset):
-        """
-        Takes selected broadcasts and re-queues the sending task for all recipients
-        that have a 'FAILED' status.
-        """
         requeued_count = 0
         for broadcast in queryset:
             failed_recipients = broadcast.recipients.filter(status=BroadcastRecipient.Status.FAILED)
             for recipient in failed_recipients:
                 send_message_to_user_task.delay(recipient.id)
                 requeued_count += 1
-            # Reset status for the next attempt
             failed_recipients.update(status=BroadcastRecipient.Status.PENDING, error_message=None)
-
-            # Set the main broadcast status back to pending so the scheduler can pick it up if needed
             broadcast.status = Broadcast.Status.PENDING
             broadcast.save()
-
         self.message_user(request, f"{requeued_count} ta xatolik bo'lgan xabar qayta navbatga qo'yildi.")
 
 
@@ -188,17 +183,6 @@ class SearchQueryAdmin(admin.ModelAdmin):
 
 @admin.register(InvitedUser)
 class InvitedUserAdmin(admin.ModelAdmin):
-    """
-    Admin interface for the InvitedUser model.
-    """
-    # Ro'yxatda ko'rinadigan ustunlar
     list_display = ( 'first_name', 'channel', 'left', 'invited_at', 'left_at')
-
-
-
-    # O'ng tomonda paydo bo'ladigan filtrlar paneli
     list_filter = ('channel', 'left', 'invited_at')
-
-    # Faqat o'qish uchun mo'ljallangan maydonlar (avtomatik to'ldiriladi)
     readonly_fields = ('invited_at', 'left_at')
-

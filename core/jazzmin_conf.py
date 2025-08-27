@@ -1,7 +1,8 @@
 JAZZMIN_SETTINGS = {
-    "site_title": "Kino Bot",
-    "site_header": "Kino Bot",
-    "site_brand": "Kino Bot",
+    "site_title": "KUKU Bot",
+    "site_header": "KUKU Bot",
+    "site_brand": "KUKU"
+                  " Bot",
     "welcome_sign": "Welcome to the your_site_name",
     # Copyright on the footer
     "copyright": "GinzaPro",

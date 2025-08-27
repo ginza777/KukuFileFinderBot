@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: {{ schema }}://{{ host }}{% url 'django.contrib.sitemaps.views.sitemap' %}

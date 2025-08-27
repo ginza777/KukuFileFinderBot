@@ -6,7 +6,12 @@ from django.urls import path, include
 
 from . import views
 from .swagger.schema import swagger_urlpatterns
-
+from django.contrib.sitemaps.views import sitemap
+from apps.webapp.sitemaps import TgFileSitemap
+# --- SITEMAP'NI SOZLASH ---
+sitemaps = {
+    'files': TgFileSitemap,
+}
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('rosetta/', include('rosetta.urls')),
@@ -15,6 +20,8 @@ urlpatterns = [
     path('api/', include('apps.kuku_ai_bot.urls')),
     path('', include('apps.webapp.urls')),
     path('metrics/', include('django_prometheus.urls')),  # YANGI QATOR
+    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
+    path('robots.txt', views.robots_txt),
 
 ]
 
