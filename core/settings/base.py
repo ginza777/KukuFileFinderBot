@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     # local
     "apps.kuku_ai_bot",
     "apps.webapp",
-    "apps.parsing",
 
 ]
 
